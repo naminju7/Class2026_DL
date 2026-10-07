@@ -1,28 +1,44 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class MultiTaskCNN(nn.Module):
     def __init__(self, num_crops=3, num_health=2):
         super().__init__()
-        # ----- 합성곱 층 -----
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, padding=1)   # 3  -> 16 채널
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)  # 16 -> 32 채널
-        self.conv3 = nn.Conv2d(32, 64, kernel_size=3, padding=1)  # 32 -> 64 채널
+
+        # ----- 특징 추출부 -----
+        # baseline보다 채널 수와 층 수를 늘리고 BatchNorm을 추가
+        def block(in_ch, out_ch):
+            return nn.Sequential(
+                nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(out_ch),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(out_ch),
+                nn.ReLU(inplace=True),
+                nn.MaxPool2d(2),
+            )
+
+        self.features = nn.Sequential(
+            block(3, 32),      # 128 -> 64
+            block(32, 64),     # 64 -> 32
+            block(64, 128),    # 32 -> 16
+            block(128, 256),   # 16 -> 8
+        )
+
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.dropout = nn.Dropout(0.3)
 
         # ----- 두 개의 출력 머리 -----
-        self.crop_head = nn.Linear(64, num_crops)     # 작물 종류
-        self.health_head = nn.Linear(64, num_health)  # 건강 상태
+        self.crop_head = nn.Linear(256, num_crops)
+        self.health_head = nn.Linear(256, num_health)
 
     def forward(self, x):
         # x: (B, 3, 128, 128)
-        x = F.max_pool2d(F.relu(self.conv1(x)), 2)  # (B, 16, 64, 64)
-        x = F.max_pool2d(F.relu(self.conv2(x)), 2)  # (B, 32, 32, 32)
-        x = F.max_pool2d(F.relu(self.conv3(x)), 2)  # (B, 64, 16, 16)
-
-        x = F.adaptive_avg_pool2d(x, 1)  # (B, 64, 1, 1)  각 채널의 평균
-        feat = torch.flatten(x, 1)       # (B, 64)
+        x = self.features(x)          # (B, 256, 8, 8)
+        x = self.pool(x)              # (B, 256, 1, 1)
+        feat = torch.flatten(x, 1)    # (B, 256)
+        feat = self.dropout(feat)
 
         crop_out = self.crop_head(feat)      # (B, 3)
         health_out = self.health_head(feat)  # (B, 2)
