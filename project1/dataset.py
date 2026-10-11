@@ -81,6 +81,7 @@ def get_transforms(train, aug="basic", blur_p=0.0):
 
     aug (학습용 증강 강도)
       basic  : 좌우/상하 뒤집기 (A 실험)
+      rot    : basic + 90도 회전 (보간 없는 무손실 방향 증강)
       mild   : basic + 90도 회전 + (50% 확률로) ±10도/이동 4%/확대 ±5% + 아주 약한 밝기/대비/채도 변화 (hue 없음)
       medium : basic + 90도 회전 + ±20도/이동 6%/확대 ±10% + 약한 색 변화
       strong : medium + RandomErasing (작은 조각 가리기)
@@ -96,6 +97,15 @@ def get_transforms(train, aug="basic", blur_p=0.0):
         return transforms.Compose([
             transforms.RandomHorizontalFlip(),
             transforms.RandomVerticalFlip(),
+            transforms.ToTensor(),
+            normalize,
+        ])
+
+    if aug == "rot":
+        return transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            RandomRot90(),
             transforms.ToTensor(),
             normalize,
         ])
