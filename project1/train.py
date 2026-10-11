@@ -389,7 +389,7 @@ def main():
     parser.add_argument("--warmup", type=float, default=2.0, help="cosine 의 warmup epoch 수")
     parser.add_argument("--min_lr_ratio", type=float, default=0.01)
     parser.add_argument("--clip", type=float, default=0.0, help="gradient clipping (0 이면 끔)")
-    parser.add_argument("--aug", default="basic", choices=["basic", "mild", "medium", "strong"])
+    parser.add_argument("--aug", default="basic", choices=["basic", "rot", "mild", "medium", "strong"])
     parser.add_argument("--blur_p", type=float, default=0.0, help="약한 GaussianBlur 적용 확률 (mild/medium/strong)")
     parser.add_argument("--cw_power", type=float, default=0.0,
                         help="클래스 가중치 = 빈도^-power (0: 끔, 0.25/0.5: 부드럽게, 1: 완전 역수)")
