@@ -392,7 +392,11 @@ def main():
     parser.add_argument("--aug", default="basic", choices=["basic", "rot", "mild", "medium", "strong"])
     parser.add_argument("--blur_p", type=float, default=0.0, help="약한 GaussianBlur 적용 확률 (mild/medium/strong)")
     parser.add_argument("--cw_power", type=float, default=0.0,
-                        help="클래스 가중치 = 빈도^-power (0: 끔, 0.25/0.5: 부드럽게, 1: 완전 역수)")
+                        help="공통 클래스 가중치 = 빈도^-power (0: 끔). crop/health 개별 옵션이 없을 때 둘 다 적용")
+    parser.add_argument("--crop_cw_power", type=float, default=None,
+                        help="crop 전용 클래스 가중치 power (지정하면 --cw_power보다 우선)")
+    parser.add_argument("--health_cw_power", type=float, default=None,
+                        help="health 전용 클래스 가중치 power (지정하면 --cw_power보다 우선)")
     parser.add_argument("--sampler", default="none", choices=["none", "cell_sqrt"],
                         help="cell_sqrt: (작물,상태) 6개 조합 빈도^-0.5 로 뽑는 WeightedRandomSampler")
     parser.add_argument("--label_smoothing", type=float, default=0.0)
@@ -496,9 +500,14 @@ def main():
               "마지막 epoch 모델을 저장합니다.")
 
     # ---------------- 손실 함수 ----------------
-    cw_power = 0.0 if sampler is not None else args.cw_power  # 샘플러와 클래스 가중치를 같이 쓰지 않는다
-    crop_w = class_weights([c for c, _ in labels], num_crops, cw_power, device)
-    health_w = class_weights([h for _, h in labels], num_health, cw_power, device)
+    # 샘플러와 클래스 가중치는 같이 쓰지 않는다. 개별 power를 주면 공통 --cw_power보다 우선한다.
+    if sampler is not None:
+        crop_cw_power = health_cw_power = 0.0
+    else:
+        crop_cw_power = args.cw_power if args.crop_cw_power is None else args.crop_cw_power
+        health_cw_power = args.cw_power if args.health_cw_power is None else args.health_cw_power
+    crop_w = class_weights([c for c, _ in labels], num_crops, crop_cw_power, device)
+    health_w = class_weights([h for _, h in labels], num_health, health_cw_power, device)
     print(f"클래스 가중치 crop: {None if crop_w is None else [round(v, 3) for v in crop_w.tolist()]}, "
           f"health: {None if health_w is None else [round(v, 3) for v in health_w.tolist()]}")
     crop_crit = nn.CrossEntropyLoss(weight=crop_w, label_smoothing=args.label_smoothing)
