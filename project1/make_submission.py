@@ -41,9 +41,11 @@ def main():
         src = src.replace(old, f'DEFAULT_TTA = "{tta}"')
     elif args.module == "model":
         on = (args.tta or "off") in ("on", "1", "true", "True")
-        old = "num_health=2, tta=True):"
-        assert old in src
-        src = src.replace(old, f"num_health=2, tta={on}):")
+        old_false = "num_health=2, tta=False):"
+        old_true = "num_health=2, tta=True):"
+        assert (old_false in src) ^ (old_true in src)
+        old = old_false if old_false in src else old_true
+        src = src.replace(old, f"num_health=2, tta={on}):", 1)
     elif args.tta not in (None, "none", "off"):
         raise SystemExit("model_v1_baseline 은 TTA 가 없습니다 (--tta 생략)")
 
