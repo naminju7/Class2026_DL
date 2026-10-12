@@ -65,9 +65,9 @@ class Head(nn.Module):
 
 
 class MultiTaskCNN(nn.Module):
-    def __init__(self, num_crops=3, num_health=2, tta=True):
+    def __init__(self, num_crops=3, num_health=2, tta=False):
         super().__init__()
-        # tta=True 이면 model.eval() 상태에서만 원본 + 180도 뒤집은(상하좌우) 입력 2장의 logits 평균을 반환한다.
+        # tta=True 이면 model.eval() 상태에서만 원본 + 180도 뒤집은(상하좌우) 입력 2장의 logits 평균을 반환한다. 기본값은 False.
         # (학습 중에는 영향 없음, 파라미터/state_dict 변화 없음. 채점 시간이 걱정되면 tta=False 로)
         self.tta = tta
 
