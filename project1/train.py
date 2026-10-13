@@ -418,6 +418,8 @@ def main():
     parser.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"],
                         help="auto: GPU 가 있으면 GPU, 없으면 CPU")
     parser.add_argument("--save_path", default=None, help="기본값: ckpt/<name>.pt")
+    parser.add_argument("--init_weights", default=None,
+                        help="학습 시작 전에 불러올 state_dict 경로 (같은 구조의 모델 파인튜닝용)")
     parser.add_argument("--overwrite", action="store_true", help="이미 있는 체크포인트를 덮어쓴다 (A.pt 보호 해제, 비권장)")
     parser.add_argument("--eval_only", action="store_true",
                         help="학습하지 않고 save_path 의 모델을 불러와 평가만 한다")
@@ -470,6 +472,11 @@ def main():
 
     model_cls = importlib.import_module(args.model_module).MultiTaskCNN
     model = model_cls(num_crops=num_crops, num_health=num_health).to(device)
+    if args.init_weights is not None:
+        if args.eval_only:
+            raise SystemExit("--eval_only 에서는 --init_weights 대신 --save_path 로 평가할 체크포인트를 지정하세요.")
+        model.load_state_dict(torch.load(args.init_weights, map_location=device), strict=True)
+        print(f"초기 가중치 로드: {args.init_weights}")
     n_params = sum(p.numel() for p in model.parameters())
     n_buffers = sum(b.numel() for b in model.buffers() if b.is_floating_point())
     print(f"파라미터 {n_params:,} + 버퍼 {n_buffers:,} = {n_params + n_buffers:,} (제한 2,000,000, 권장 1,800,000 이하)")
